@@ -69,6 +69,9 @@ pub struct Config {
 
     /// Combined provider map (defaults merged with user-defined overrides).
     pub model_providers: HashMap<String, ModelProviderInfo>,
+
+    /// Reasoning level for the agent.
+    pub reasoning_level: String,
 }
 
 /// Base config deserialized from ~/.codex/config.toml.
@@ -108,6 +111,9 @@ pub struct ConfigToml {
     /// User-defined provider entries that extend/override the built-in list.
     #[serde(default)]
     pub model_providers: HashMap<String, ModelProviderInfo>,
+
+    /// Optional override of reasoning level for the agent.
+    pub reasoning_level: Option<String>,
 }
 
 impl ConfigToml {
@@ -168,6 +174,7 @@ pub struct ConfigOverrides {
     pub sandbox_policy: Option<SandboxPolicy>,
     pub disable_response_storage: Option<bool>,
     pub provider: Option<String>,
+    pub reasoning_level: Option<String>,
 }
 
 impl Config {
@@ -196,6 +203,7 @@ impl Config {
             sandbox_policy,
             disable_response_storage,
             provider,
+            reasoning_level,
         } = overrides;
 
         let sandbox_policy = match sandbox_policy {
@@ -259,6 +267,9 @@ impl Config {
             disable_response_storage: disable_response_storage
                 .or(cfg.disable_response_storage)
                 .unwrap_or(false),
+            reasoning_level: reasoning_level
+                .or(cfg.reasoning_level)
+                .unwrap_or_else(default_reasoning_level),
             notify: cfg.notify,
             instructions,
             mcp_servers: cfg.mcp_servers,
@@ -286,6 +297,10 @@ impl Config {
 
 fn default_model() -> String {
     OPENAI_DEFAULT_MODEL.to_string()
+}
+
+fn default_reasoning_level() -> String {
+    "high".into()
 }
 
 /// Returns the path to the Codex configuration directory, which is `~/.codex`.

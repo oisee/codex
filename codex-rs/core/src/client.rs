@@ -68,7 +68,7 @@ struct Payload<'a> {
     tools: &'a [serde_json::Value],
     tool_choice: &'static str,
     parallel_tool_calls: bool,
-    reasoning: Option<Reasoning>,
+    reasoning: Option<Reasoning<'a>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     previous_response_id: Option<String>,
     /// true when using the Responses API.
@@ -77,8 +77,8 @@ struct Payload<'a> {
 }
 
 #[derive(Debug, Serialize)]
-struct Reasoning {
-    effort: &'static str,
+struct Reasoning<'a> {
+    effort: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
     generate_summary: Option<bool>,
 }
@@ -141,14 +141,16 @@ pub struct ModelClient {
     model: String,
     client: reqwest::Client,
     provider: ModelProviderInfo,
+    reasoning_level: String,
 }
 
 impl ModelClient {
-    pub fn new(model: impl ToString, provider: ModelProviderInfo) -> Self {
+    pub fn new(model: impl ToString, provider: ModelProviderInfo, reasoning_level: String) -> Self {
         Self {
             model: model.to_string(),
             client: reqwest::Client::new(),
             provider,
+            reasoning_level,
         }
     }
 
@@ -182,7 +184,7 @@ impl ModelClient {
             tool_choice: "auto",
             parallel_tool_calls: false,
             reasoning: Some(Reasoning {
-                effort: "high",
+                effort: &self.reasoning_level,
                 generate_summary: None,
             }),
             previous_response_id: prompt.prev_id.clone(),

@@ -91,6 +91,7 @@ impl Codex {
             disable_response_storage: config.disable_response_storage,
             notify: config.notify.clone(),
             cwd: config.cwd.clone(),
+            reasoning_level: config.reasoning_level.clone(),
         };
 
         tokio::spawn(submission_loop(config, rx_sub, tx_event, ctrl_c));
@@ -516,6 +517,7 @@ async fn submission_loop(
                 disable_response_storage,
                 notify,
                 cwd,
+                reasoning_level,
             } => {
                 info!("Configuring session: model={model}; provider={provider:?}");
                 if !cwd.is_absolute() {
@@ -531,7 +533,7 @@ async fn submission_loop(
                     return;
                 }
 
-                let client = ModelClient::new(model.clone(), provider.clone());
+                let client = ModelClient::new(model.clone(), provider.clone(), reasoning_level);
 
                 // abort any current running session and clone its state
                 let state = match sess.take() {
