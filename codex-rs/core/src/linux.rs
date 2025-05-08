@@ -46,7 +46,12 @@ pub async fn exec_linux(
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
-            .expect("Failed to create runtime");
+            .map_err(|e| {
+                CodexErr::Io(io::Error::new(
+                    io::ErrorKind::Other,
+                    format!("Failed to create runtime: {e}"),
+                ))
+            })?;
 
         rt.block_on(async {
             apply_sandbox_policy_to_current_thread(sandbox_policy, &params.cwd)?;

@@ -160,10 +160,10 @@ impl ModelClient {
         }
 
         // Assemble tool list: built-in tools + any extra tools from the prompt.
-        let mut tools_json: Vec<serde_json::Value> = DEFAULT_TOOLS
-            .iter()
-            .map(|t| serde_json::to_value(t).expect("serialize builtin tool"))
-            .collect();
+        let mut tools_json = Vec::with_capacity(DEFAULT_TOOLS.len() + prompt.extra_tools.len());
+        for t in DEFAULT_TOOLS.iter() {
+            tools_json.push(serde_json::to_value(t)?);
+        }
         tools_json.extend(
             prompt
                 .extra_tools
