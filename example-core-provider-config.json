@@ -1,0 +1,24 @@
+{
+  "coreProvider": "gemini",
+  "providers": {
+    "custom-ollama": {
+      "name": "Custom Ollama",
+      "baseURL": "http://localhost:11434/v1",
+      "envKey": "OLLAMA_API_KEY"
+    }
+  },
+  "approvalMode": "suggest",
+  "disableResponseStorage": false,
+  "notify": true,
+  "history": {
+    "maxSize": 1000,
+    "saveHistory": true,
+    "sensitivePatterns": ["password", "api-key", "secret"]
+  },
+  "tools": {
+    "shell": {
+      "maxBytes": 10240,
+      "maxLines": 256
+    }
+  }
+}

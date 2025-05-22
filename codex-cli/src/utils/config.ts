@@ -43,10 +43,54 @@ if (!isVitest) {
   loadDotenv({ path: USER_WIDE_CONFIG_PATH });
 }
 
+export const DEFAULT_CORE_PROVIDER = "openai";
 export const DEFAULT_AGENTIC_MODEL = "codex-mini-latest";
 export const DEFAULT_FULL_CONTEXT_MODEL = "gpt-4.1";
 export const DEFAULT_APPROVAL_MODE = AutoApprovalMode.SUGGEST;
 export const DEFAULT_INSTRUCTIONS = "";
+
+// Provider-specific default models
+export const PROVIDER_DEFAULT_MODELS: Record<
+  string,
+  { agentic: string; fullContext: string }
+> = {
+  openai: {
+    agentic: "codex-mini-latest",
+    fullContext: "gpt-4.1",
+  },
+  ollama: {
+    agentic: "llama3.2:latest",
+    fullContext: "llama3.2:latest",
+  },
+  gemini: {
+    agentic: "gemini-1.5-flash",
+    fullContext: "gemini-1.5-pro",
+  },
+  deepseek: {
+    agentic: "deepseek-chat",
+    fullContext: "deepseek-reasoner",
+  },
+  mistral: {
+    agentic: "mistral-small-latest",
+    fullContext: "mistral-large-latest",
+  },
+  groq: {
+    agentic: "llama-3.3-70b-versatile",
+    fullContext: "llama-3.3-70b-versatile",
+  },
+  xai: {
+    agentic: "grok-beta",
+    fullContext: "grok-beta",
+  },
+  openrouter: {
+    agentic: "anthropic/claude-3.5-sonnet",
+    fullContext: "anthropic/claude-3.5-sonnet",
+  },
+  arceeai: {
+    agentic: "arcee-agent",
+    fullContext: "arcee-agent",
+  },
+};
 
 // Default shell output limits
 export const DEFAULT_SHELL_MAX_BYTES = 1024 * 10; // 10 KB
@@ -109,7 +153,10 @@ export function getBaseUrl(provider: string = "openai"): string | undefined {
   return undefined;
 }
 
-export function getApiKey(provider: string = "openai"): string | undefined {
+export function getApiKey(
+  provider: string = "openai",
+  fallbackToOpenAI: boolean = false,
+): string | undefined {
   const config = loadConfig();
   const providersConfig = config.providers ?? providers;
   const providerInfo = providersConfig[provider.toLowerCase()];
@@ -126,13 +173,52 @@ export function getApiKey(provider: string = "openai"): string | undefined {
     return customApiKey;
   }
 
-  // If the provider not found in the providers list and `OPENAI_API_KEY` is set, use it
-  if (OPENAI_API_KEY !== "") {
+  // Only fall back to OPENAI_API_KEY if explicitly requested
+  if (fallbackToOpenAI && OPENAI_API_KEY !== "") {
     return OPENAI_API_KEY;
   }
 
   // We tried.
   return undefined;
+}
+
+/**
+ * Get API key with the legacy fallback behavior for backward compatibility.
+ * This function maintains the old behavior of falling back to OPENAI_API_KEY.
+ */
+export function getApiKeyWithFallback(
+  provider: string = "openai",
+): string | undefined {
+  return getApiKey(provider, true);
+}
+
+/**
+ * Get the configured core provider from config or environment.
+ */
+export function getCoreProvider(): string {
+  const config = loadConfig();
+  return (
+    config.coreProvider ??
+    process.env["CODEX_CORE_PROVIDER"] ??
+    DEFAULT_CORE_PROVIDER
+  );
+}
+
+/**
+ * Get the default model for a specific provider and context type.
+ */
+export function getProviderDefaultModel(
+  provider: string,
+  isFullContext: boolean = false,
+): string {
+  const providerDefaults = PROVIDER_DEFAULT_MODELS[provider.toLowerCase()];
+  if (providerDefaults) {
+    return isFullContext
+      ? providerDefaults.fullContext
+      : providerDefaults.agentic;
+  }
+  // Fallback to OpenAI defaults for unknown providers
+  return isFullContext ? DEFAULT_FULL_CONTEXT_MODEL : DEFAULT_AGENTIC_MODEL;
 }
 
 export type FileOpenerScheme = "vscode" | "cursor" | "windsurf";
@@ -141,6 +227,8 @@ export type FileOpenerScheme = "vscode" | "cursor" | "windsurf";
 export type StoredConfig = {
   model?: string;
   provider?: string;
+  /** Core provider used as default instead of falling back to OpenAI */
+  coreProvider?: string;
   approvalMode?: AutoApprovalMode;
   fullAutoErrorMode?: FullAutoErrorMode;
   memory?: MemoryConfig;
@@ -189,6 +277,8 @@ export type AppConfig = {
   apiKey?: string;
   model: string;
   provider?: string;
+  /** Core provider used as default instead of falling back to OpenAI */
+  coreProvider?: string;
   instructions: string;
   approvalMode?: AutoApprovalMode;
   fullAutoErrorMode?: FullAutoErrorMode;
@@ -418,13 +508,22 @@ export const loadConfig = (
       ? storedConfig.model.trim()
       : undefined;
 
+  // Determine the core provider and use its default model if no model is specified
+  const coreProvider =
+    storedConfig.coreProvider ??
+    process.env["CODEX_CORE_PROVIDER"] ??
+    DEFAULT_CORE_PROVIDER;
+  const effectiveProvider = storedConfig.provider ?? coreProvider;
+
   const config: AppConfig = {
     model:
       storedModel ??
-      (options.isFullContext
-        ? DEFAULT_FULL_CONTEXT_MODEL
-        : DEFAULT_AGENTIC_MODEL),
+      getProviderDefaultModel(
+        effectiveProvider,
+        options.isFullContext ?? false,
+      ),
     provider: storedConfig.provider,
+    coreProvider: storedConfig.coreProvider,
     instructions: combinedInstructions,
     notify: storedConfig.notify === true,
     approvalMode: storedConfig.approvalMode,
@@ -555,6 +654,7 @@ export const saveConfig = (
   const configToSave: StoredConfig = {
     model: config.model,
     provider: config.provider,
+    coreProvider: config.coreProvider,
     providers: config.providers,
     approvalMode: config.approvalMode,
     disableResponseStorage: config.disableResponseStorage,

@@ -1,0 +1,34 @@
+# Example configuration file showcasing the new core provider feature
+# Save this as ~/.codex/config.yaml (or config.json)
+
+# Set your core provider - this replaces the OpenAI fallback behavior
+coreProvider: "gemini"  # Options: openai, gemini, ollama, deepseek, mistral, groq, xai, openrouter, arceeai
+
+# The system will now use Gemini's default models by default:
+# - agentic tasks: "gemini-1.5-flash" 
+# - full context tasks: "gemini-1.5-pro"
+
+# You can still override with specific providers per session:
+# provider: "openai"  # This would override the core provider for this session
+
+# Custom provider configurations (extending defaults)
+providers:
+  custom-ollama:
+    name: "Custom Ollama"
+    baseURL: "http://localhost:11434/v1"
+    envKey: "OLLAMA_API_KEY"
+
+# Other configuration options remain the same
+approvalMode: "suggest"
+disableResponseStorage: false
+notify: true
+
+history:
+  maxSize: 1000
+  saveHistory: true
+  sensitivePatterns: ["password", "api-key", "secret"]
+
+tools:
+  shell:
+    maxBytes: 10240
+    maxLines: 256
